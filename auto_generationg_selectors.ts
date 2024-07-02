@@ -1,0 +1,41 @@
+import { StoreApi, UseBoundStore, create } from 'zustand';
+
+type WithSelectors<S> = S extends { getState: () => infer T }
+  ? S & { use: { [K in keyof T]: () => T[K] } }
+  : never;
+
+const createSelectors = <S extends UseBoundStore<StoreApi<object>>>(
+  _store: S
+) => {
+  let store = _store as WithSelectors<typeof _store>;
+  store.use = {};
+  for (let k of Object.keys(store.getState())) {
+    (store.use as any)[k] = () => store((s) => s[k as keyof typeof s]);
+  }
+
+  return store;
+};
+
+//use
+interface BearState {
+  bears: number;
+  increase: (by: number) => void;
+  increment: () => void;
+}
+
+const useBearStoreBase = create<BearState>()((set) => ({
+  bears: 0,
+  increase: (by) => set((state) => ({ bears: state.bears + by })),
+  increment: () => set((state) => ({ bears: state.bears + 1 })),
+}));
+
+const useBearStore = createSelectors(useBearStoreBase);
+
+const bears = useBearStore.use.bears();
+
+// get the action
+const increment = useBearStore.use.increment();
+
+const increase = useBearStore.use.increase();
+
+const increase_normal = useBearStoreBase((state: any) => state.increase());
